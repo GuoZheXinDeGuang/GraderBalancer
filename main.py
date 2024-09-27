@@ -32,7 +32,15 @@ for i in range(1, total_questions + 1):
 if st.button("分配问题给评分员"):
     # Distribute questions evenly among 4 graders
     graders = ["评分员A", "评分员B", "评分员C", "评分员D"]
-    df["评分员"] = np.repeat(graders, len(df) // 4 + 1)[:len(df)]
+    num_graders = len(graders)
+    
+    # Create a list of grader assignments
+    grader_assignments = []
+    for i in range(total_questions):
+        grader_assignments.append(graders[i % num_graders])
+    
+    # Assign graders to questions
+    df["评分员"] = grader_assignments
     
     # Display results
     st.subheader("问题分配结果")
