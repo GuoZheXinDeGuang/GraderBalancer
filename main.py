@@ -10,36 +10,23 @@ st.set_page_config(page_title="Score Distribution System", layout="wide")
 def calculate_variance(scores: List[float]) -> float:
     return np.var(scores) if scores else 0
 
-# Function to distribute questions using dynamic programming
-def distribute_questions(df: pd.DataFrame, graders: List[str]) -> Dict[str, List[float]]:
-    n = len(df)
-    m = len(graders)
-    dp = [[float('inf')] * (n + 1) for _ in range(m + 1)]
-    path = [[[] for _ in range(n + 1)] for _ in range(m + 1)]
-
-    # Initialize base cases
-    for i in range(m + 1):
-        dp[i][0] = 0
+# New function to divide scores into subsets
+def divide_into_subsets(scores: List[float], k: int) -> List[List[float]]:
+    subsets = [[] for _ in range(k)]
+    subset_sums = [0] * k
     
-    # Fill dp table
-    for i in range(1, m + 1):
-        for j in range(1, n + 1):
-            for k in range(j):
-                scores = df['Score'].iloc[k:j].tolist()
-                var = calculate_variance(scores)
-                if dp[i][j] > dp[i-1][k] + var:
-                    dp[i][j] = dp[i-1][k] + var
-                    path[i][j] = path[i-1][k] + [j]
+    for score in sorted(scores, reverse=True):
+        min_sum_index = subset_sums.index(min(subset_sums))
+        subsets[min_sum_index].append(score)
+        subset_sums[min_sum_index] += score
+    
+    return subsets
 
-    # Reconstruct the optimal assignment
-    assignment = path[m][n]
-    assignment = [0] + assignment
-    grader_scores = {grader: [] for grader in graders}
-    for i in range(1, len(assignment)):
-        start, end = assignment[i-1], assignment[i]
-        grader_scores[graders[i-1]] = df['Score'].iloc[start:end].tolist()
-
-    return grader_scores
+# Function to distribute questions using the new greedy approach
+def distribute_questions(df: pd.DataFrame, graders: List[str]) -> Dict[str, List[float]]:
+    scores = df['Score'].tolist()
+    subsets = divide_into_subsets(scores, len(graders))
+    return {grader: subset for grader, subset in zip(graders, subsets)}
 
 # Title
 st.title("Question Score Distribution System")
@@ -60,11 +47,8 @@ if st.button("Distribute Questions to Graders"):
     # Distribute questions among 4 graders
     graders = ["Grader A", "Grader B", "Grader C", "Grader D"]
     
-    # Sort questions by score in descending order
-    df_sorted = df.sort_values("Score", ascending=False)
-    
-    # Distribute questions using the dynamic programming algorithm
-    grader_scores = distribute_questions(df_sorted, graders)
+    # Distribute questions using the new greedy algorithm
+    grader_scores = distribute_questions(df, graders)
     
     # Display results
     st.subheader("Question Distribution Results")
@@ -104,6 +88,6 @@ st.sidebar.write("""
 st.sidebar.header("About")
 st.sidebar.write("""
 This application helps you distribute question grading tasks evenly among four graders.
-It uses a dynamic programming algorithm to minimize the variance of individual scores assigned to each grader.
+It uses a greedy algorithm to minimize the variance of individual scores assigned to each grader.
 The app provides detailed statistics for each grader and an overall score distribution chart.
 """)
